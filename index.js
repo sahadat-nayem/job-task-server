@@ -33,7 +33,7 @@ async function run() {
     // await client.connect();
     // console.log("✅ Connected to MongoDB");
 
-    const taskCollection = client.db("jobtaskDB").collection("tasks");
+    const taskCollection = client.db("taskDB").collection("tasks");
 
     // Get all tasks
     app.get("/tasks", async (req, res) => {
