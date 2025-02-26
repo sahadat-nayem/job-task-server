@@ -28,8 +28,8 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect to MongoDB
-    // await client.connect();
-    // console.log("Connected to MongoDB");
+    await client.connect();
+    console.log("Connected to MongoDB");
 
     const taskCollection = client.db("jobtaskDB").collection("tasks");
 
