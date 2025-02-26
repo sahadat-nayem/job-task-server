@@ -9,7 +9,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ["https://task-management-3dba2.web.app/"],
+    origin: ["https://task-management-3dba2.web.app"],
     methods: ["GET", "POST", "PUT", "DELETE"],
   },
 });
