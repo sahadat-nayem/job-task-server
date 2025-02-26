@@ -30,8 +30,8 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
-    console.log("✅ Connected to MongoDB");
+    // await client.connect();
+    // console.log("✅ Connected to MongoDB");
 
     const taskCollection = client.db("jobtaskDB").collection("tasks");
 
@@ -130,10 +130,10 @@ async function run() {
 
     // WebSocket connection
     io.on("connection", (socket) => {
-      console.log("A user connected:", socket.id);
+      // console.log("A user connected:", socket.id);
 
       socket.on("disconnect", () => {
-        console.log("User disconnected:", socket.id);
+        // console.log("User disconnected:", socket.id);
       });
     });
 
