@@ -8,7 +8,10 @@ require("dotenv").config();
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: "*" },
+  cors: {
+    origin: ["https://your-frontend.vercel.app"], // ফ্রন্টএন্ড URL ঠিক করো
+    methods: ["GET", "POST", "PUT", "DELETE"],
+  },
 });
 
 // Middleware
@@ -27,9 +30,8 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect to MongoDB
     await client.connect();
-    console.log("Connected to MongoDB");
+    console.log("✅ Connected to MongoDB");
 
     const taskCollection = client.db("jobtaskDB").collection("tasks");
 
@@ -39,6 +41,7 @@ async function run() {
         const tasks = await taskCollection.find().toArray();
         res.status(200).send(tasks);
       } catch (error) {
+        console.error("Error fetching tasks:", error);
         res.status(500).send({ message: "Error fetching tasks", error });
       }
     });
@@ -47,108 +50,104 @@ async function run() {
     app.post("/tasks", async (req, res) => {
       try {
         const newTask = req.body;
-
-        // **Timestamp ফরম্যাট ঠিক করা**
-        newTask.timestamp = new Date()
-          .toLocaleString("en-GB", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          })
-          .replace(",", ""); // কমা রিমুভ করে ফরম্যাট ঠিক করা
+        newTask.timestamp = new Date().toISOString();
 
         const result = await taskCollection.insertOne(newTask);
-        io.emit("taskUpdated"); // Notify all clients
+        io.emit("taskUpdated");
         res.status(201).send(result);
       } catch (error) {
+        console.error("Error creating task:", error);
         res.status(500).send({ message: "Error creating task", error });
       }
     });
 
-    // Update task (Drag & Drop or Edit)
+    // Get a single task by ID
     app.get("/tasks/:id", async (req, res) => {
+      try {
         const { id } = req.params;
         const task = await taskCollection.findOne({ _id: new ObjectId(id) });
-        if (task) {
-          res.send(task);
-        } else {
-          res.status(404).send({ message: "Task not found" });
+
+        if (!task) {
+          return res.status(404).send({ message: "Task not found" });
         }
-      });
 
-
-    app.put("/tasks/:id", async (req, res) => {
-      const { id } = req.params;
-      const { title, description, category } = req.body;
-
-      if (!ObjectId.isValid(id)) {
-        return res.status(400).send({ message: "Invalid Task ID" });
+        res.status(200).send(task);
+      } catch (error) {
+        console.error("Error fetching task:", error);
+        res.status(500).send({ message: "Error fetching task", error });
       }
+    });
 
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          title,
-          description,
-          category,
-        },
-      };
-
+    // Update task
+    app.put("/tasks/:id", async (req, res) => {
       try {
-        const result = await taskCollection.updateOne(filter, updateDoc);
+        const { id } = req.params;
+        const { title, description, category } = req.body;
+
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: "Invalid Task ID" });
+        }
+
+        const result = await taskCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { title, description, category } }
+        );
+
         if (result.matchedCount === 0) {
           return res.status(404).send({ message: "Task not found" });
         }
-        io.emit("taskUpdated"); // Notify all clients
-        res.status(200).send(result);
+
+        io.emit("taskUpdated");
+        res.status(200).send({ message: "Task updated successfully" });
       } catch (error) {
+        console.error("Error updating task:", error);
         res.status(500).send({ message: "Error updating task", error });
       }
     });
 
     // Delete task
     app.delete("/tasks/:id", async (req, res) => {
-      const { id } = req.params;
-
-      if (!ObjectId.isValid(id)) {
-        return res.status(400).send({ message: "Invalid Task ID" });
-      }
-
-      const filter = { _id: new ObjectId(id) };
-
       try {
-        const result = await taskCollection.deleteOne(filter);
+        const { id } = req.params;
+
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: "Invalid Task ID" });
+        }
+
+        const result = await taskCollection.deleteOne({ _id: new ObjectId(id) });
+
         if (result.deletedCount === 0) {
           return res.status(404).send({ message: "Task not found" });
         }
-        io.emit("taskUpdated"); // Notify all clients
+
+        io.emit("taskUpdated");
         res.status(200).send({ message: "Task deleted successfully" });
       } catch (error) {
+        console.error("Error deleting task:", error);
         res.status(500).send({ message: "Error deleting task", error });
       }
     });
 
+    // WebSocket connection
     io.on("connection", (socket) => {
-      // console.log("A user connected");
+      console.log("A user connected:", socket.id);
 
       socket.on("disconnect", () => {
-        // console.log("User disconnected");
+        console.log("User disconnected:", socket.id);
       });
     });
+
   } catch (error) {
-    console.error(error);
-    process.exit(1); // Exit process on fatal error
+    console.error("❌ Fatal Error:", error);
+    process.exit(1);
   }
 }
 
 run().catch(console.dir);
 
 // Root route
-app.get("/", (req, res) => res.send("Job Task Management API"));
+app.get("/", (req, res) => res.send("✅ Job Task Management API is running..."));
 
 // Start the server
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
